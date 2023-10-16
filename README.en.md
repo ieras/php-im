@@ -1,22 +1,18 @@
 # PHP 原生websocket实现聊天室功能
 
 #### Description
-PHP 纯原生(单文件)websocket实现聊天室功能，负载能力没测试，仅供学习参考，娱乐用，当然如果你的负载不高商用也是没问题的，比如本代码主要用于配合iHttp(可爱猫微信机器人插件)内置的websocket服务提供功能支持，像这样的低负载还是没问题的，采用单文件主要是让其入门成本低，部署成本低。喜欢的可以star和fork，想参与改进的可以提pr
-
+PHP's pure native (single file) websocket implements chat room functionality, and its load capacity has not been tested. It is only for learning reference and entertainment purposes. Of course, if your load is not high, it is not a problem for commercial use. For example, this code is mainly used to support the built-in websocket service of iHttp (Cute Cat WeChat Robot Plugin). Low loads like this are not a problem, and using a single file is mainly to make its entry cost low and deployment cost low. Those who like it can start and fork, and those who want to participate in improvement can provide PR
 #### Software Architecture
 Software architecture description
 
-#### Installation
+#### Installation and Instructions
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+1.  cd php-im
+2.  php ws.php
+3.  The appearance of `listen on ws://0.0.0.0:3233...` indicates successful startup
+4.  Configure this path as a virtual host (everyone should be familiar with it), and then visit index.html
+Demo: https://www.ikam.cn/ws/
 
-#### Instructions
-
-1.  xxxx
-2.  xxxx
-3.  xxxx
 
 #### Contribution
 

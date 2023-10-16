@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="utf-8">
+    <meta name="apple-mobile-web-app-title" content="宝宝名字大全">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <title>PHP 原生websocket实现聊天室功能</title>
+    <meta name="keywords" content="php websocket,websocket,php实现websocket,原生php实现websocket"/>
+    <meta name="description" content="php单文件开发websocket服务例子"/>
+    <link rel="shortcut icon" href="//ikam.cn/view/img/favicon.ico"/>
+    <link rel="icon" sizes="32x32" href="//ikam.cn/view/img/favicon.ico">
+    <link rel="Bookmark" href="//ikam.cn/view/img/favicon.ico"/>
+    <link rel="stylesheet" href="//ikam.cn/view/css/bootstrap.min.css">
+    <link rel="stylesheet" href="//ikam.cn/view/css/bootstrap-bbs.min.css">
+    <link rel="stylesheet" href="//ikam.cn/view/htm/bing/style.css">
+    <style>
+        #header {
+            z-index: 5;
+            opacity: 0.6;
+            height: 3%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .main {
+            z-index: 5;
+            width: 100%;
+            height: 88%;
+            display: table-cell;
+            vertical-align: middle;
+            text-align: center;
+        }
+
+        .box, .title {
+            z-index: 5;
+            opacity: 0.6;
+            text-align: left;
+            border-radius: 10px;
+            margin: 0.5% auto;
+        }
+
+        .title {
+            height: 10%;
+            display: flex;
+            justify-content: center; /* 水平居中 */
+            align-items: center; /* 垂直居中 */
+            text-align: center; /* 文字水平居中 */
+        }
+
+        .box {
+            overflow: auto;
+            height: 88%;
+        }
+
+        #footer {
+            z-index: 5;
+            position: absolute;
+            bottom: 0;
+            opacity: 0.6;
+            height: 7%;
+        }
+    </style>
+</head>
+<body>
+<header class="bg-light" id="header">
+    <div class="container">
+        <span id="notice">大众聊天室[仅作演示用]</span>
+    </div>
+</header>
+<div id="background" class="wall"></div>
+<div id="midground" class="wall"></div>
+<div id="foreground" class="wall"></div>
+<div class="main">
+    <div class="container bg-light box" id="msg">
+<!--        <div id="msg"></div>-->
+    </div>
+    <h4 class="container bg-light title" style="font-size: 120%">
+        <div class="input-group mb-3">
+            <label for="txt" class="container">我是[<span class="name" id="nickname" style="color: red"></span>]</label>
+            <input type="text" class="form-control" placeholder="消息内容" id="txt">
+            <div class="input-group-append">
+                <button class="btn btn-primary" id="send">发送</button>
+            </div>
+        </div>
+    </h4>
+    <p id="text">文明发言 健康聊天</p>
+    <p id="author" style="z-index:96;">By:可爱猫-小黄</p>
+</div>
+<script src="//ikam.cn/lang/zh-cn/bbs.js"></script>
+<script src="//ikam.cn/view/js/jquery-3.5.1.min.js"></script>
+<script src="//ikam.cn/view/js/popper.min.js"></script>
+<script src="//ikam.cn/view/js/bootstrap.min.js"></script>
+<script src="//ikam.cn/view/js/xiuno.min.js"></script>
+<script src="//ikam.cn/view/js/bootstrap-plugin.min.js"></script>
+<script src="//ikam.cn/view/js/async.min.js"></script>
+<script src="//ikam.cn/view/js/form.js"></script>
+<script>
+    /**
+     0：未连接
+     1：连接成功，可通讯
+     2：正在关闭
+     3：连接已关闭或无法打开
+     */
+    let messages = $('#msg');
+    let url = 'ws://127.0.0.1:3233';
+    let webSocket = new WebSocket(url);
+
+    //监听消息
+    webSocket.onmessage = function (event) {
+        console.log("onMessage|Msg:" + event.data);
+        //document.getElementById("msg").innerHTML += "<p>onMessage|response:" + event.data + "</p>"
+        messages.append("<p>" + event.data + "</p>");
+        $('#msg').scrollTop($('#msg')[0].scrollHeight);
+    };
+    // 监听错误
+    webSocket.onerror = function (event) {
+        messages.append("<p>onError|state:" + sockState() + "</p>");
+        console.log("error" + event.data);
+        webSocket.close();
+    };
+    // 监听连接关闭
+    webSocket.onclose = function (event) {
+        console.log("onClose|state:" + sockState());
+        setTimeout(reconnect, 200);
+    }
+    // 打开websocket
+    webSocket.onopen = function (event) {
+        console.log(webSocket);
+        console.log("onOpen|state:" + sockState());
+        messages.append("<p>onOpen|state:" + sockState() + "</p>");
+        webSocket.send(JSON.stringify({
+            event: 'join',
+            nickname: infoArr.nickname,
+        }));
+        $('#msg').scrollTop($('#msg')[0].scrollHeight);
+    };
+
+    // websocket 断线重连
+    function reconnect() {
+        messages.append("<p><span style='color: red'>重连中...</span></p>");
+        $('#msg').scrollTop($('#msg')[0].scrollHeight);
+        webSocket.close();
+        let ws = new WebSocket(url);
+        ws.onmessage = webSocket.onmessage;
+        ws.onerror = webSocket.onerror;
+        ws.onclose = webSocket.onclose;
+        ws.onopen = webSocket.onopen;
+        webSocket = ws;
+    }
+
+    // websocket 心跳
+    const intervalId = setInterval(() => {
+        console.log('ws heart ...');
+        webSocket.send(JSON.stringify({
+            event: 'ping'
+        }));
+    }, 55000);//55秒一次，据我观察1分钟不操作会掉线
+    //clearInterval(intervalId);
+
+    function sockState() {
+        let status = ['连接中', '已连接', '关闭中', '已关闭'];
+        return status[webSocket.readyState];
+    }
+
+    $('#send').click(function () {
+        let msg = $('#txt').val();
+        document.getElementById('txt').value = '';
+        if (msg === '') {
+            messages.append("<p>[<span style='color: rebeccapurple'>系统中心</span>]：<span style='color: red'><span class='name'>" + infoArr.nickname + "</span>,您好!消息内容不能为空哦！</span></p>");
+            $('#msg').scrollTop($('#msg')[0].scrollHeight);
+            return;
+        }
+        console.log("start|sendMsg:" + msg);
+        webSocket.send(JSON.stringify({
+            event: 'send',
+            nickname: infoArr.nickname,
+            msg: msg,
+        }));
+    });
+    $('#txt').on('keypress', function (event) {
+        if (event.keyCode === 13) {
+            $('#send').click();
+        }
+    });
+
+    let info = localStorage.getItem("info");
+    let infoArr = {};
+    if (info) {
+        infoArr = JSON.parse(info);
+    } else {
+        let nickname1 = ['欧阳', '太史', '端木', '上官', '司马', '东方', '独孤', '南宫', '万俟', '闻人', '夏侯', '诸葛', '尉迟', '公羊', '赫连', '澹台', '皇甫', '宗政', '濮阳', '公冶', '太叔', '申屠', '公孙', '慕容', '仲孙', '钟离', '长孙', '宇文', '司徒', '鲜于', '司空', '闾丘', '子车', '亓官', '司寇', '巫马', '公西', '颛孙', '壤驷', '公良', '漆雕', '乐正', '宰父', '谷梁', '拓跋', '夹谷', '轩辕', '令狐', '段干', '百里', '呼延', '东郭', '南门', '羊舌', '微生', '公户', '公玉', '公仪', '梁丘', '公仲', '公上', '公门', '公山', '公坚', '左丘', '公伯', '西门', '公祖', '第五', '公乘', '贯丘', '公皙', '南荣', '东里', '东宫', '仲长', '子书', '子桑', '即墨', '达奚', '褚师'];
+        let nickname2 = ['轩辕', '醉月', '浮光', '缥缈', '星雨', '秋颜', '半夏', '暖阳', '涟漪', '锦瑟', '韶华', '惊鸿', '缠绵', '霓裳', '嬛绵', '山岚', '明秀', '春华', '波澜', '润玉', '紫萱', '羽裳', '翩飞', '落霞', '醉梦', '缱绻', '归云', '忘忧', '瑞雪', '梵音', '烟雨', '蝶舞', '鸿鹄', '青衣', '子衿', '轩辕', '醉月', '浮光', '缥缈', '星雨', '秋颜', '半夏', '暖阳', '涟漪', '锦瑟', '韶华', '惊鸿', '缠绵', '霓裳', '嬛绵', '山岚', '明秀', '春华', '波澜', '润玉', '紫萱', '羽裳', '翩飞', '落霞', '醉梦', '缱绻', '归云', '忘忧', '瑞雪', '梵音', '烟雨', '蝶舞', '鸿鹄', '青衣', '子衿', '妖娆'];
+        let nickname = nickname1[Math.floor(Math.random() * nickname1.length)] + nickname2[Math.floor(Math.random() * nickname2.length)];
+        infoArr = {nickname: nickname}
+        localStorage.setItem("info", JSON.stringify(infoArr))
+    }
+    $('#nickname').text(infoArr.nickname);
+
+    $('.name').click(function () {
+        let name = $(this).text();
+        name = name.replace("【", "");
+        name = name.replace("】", "");
+        window.location.href = "https://www.wiera.cn/index/cm.html?from=ergedd&name=" + escape(name);
+    });
+    $('.sur').click(function () {
+        let sur = $(this).text();
+        window.location.href = "https://www.wiera.cn/index/qm.html?from=ergedd&surname=" + escape(sur);
+    });
+</script>
+<footer class="text-muted bg-light small py-1 mt-3" id="footer">
+    <div class="container">
+        <div class="row">
+            <div class="col">
+                版权所有，保留一切权利。<br/>
+                <a href="https://beian.miit.gov.cn/" target="_blank">京ICP备13050724号-4</a>
+            </div>
+            <div class="col text-right">
+                <b>赐子千金，不如教子一艺；教子一艺，不如赐子一名。</b>
+            </div>
+        </div>
+    </div>
+</footer>
+</body>
+</html>
