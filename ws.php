@@ -255,6 +255,7 @@ class ws
     {
         $msg = $this->dataFrame($msg);
         $lens = strlen($msg);//总长度
+        //@socket_write($client, $msg, $lens);return;
         $finish = 0;//已经写入完成的长度
         while ($finish < $lens) {
             $bytes = @socket_write($client, substr($msg, $finish));
@@ -273,10 +274,13 @@ class ws
      */
     public function dataFrame($msg): string
     {
-        $ns = "";
-        foreach (str_split($msg, 125) as $o) {
-            $ns .= "\x81" . chr(strlen($o)) . $o;
+        $dataLength = strlen($msg);
+        if ($dataLength <= 125) {
+            return "\x81" . chr($dataLength) . $msg;
+        } elseif ($dataLength <= 65535) {
+            return "\x81\x7E" . pack('n', $dataLength) . $msg;
+        } else {
+            return "\x81\x7F" . pack('J', $dataLength) . $msg;
         }
-        return empty($ns) ? "\x81" . chr(strlen($msg)) . $msg : $ns;
     }
 }
