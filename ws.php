@@ -32,7 +32,7 @@ class ws
      */
     public function logic(array $clients, string $key, string $msg): void
     {
-        echo "在线人数【" . count($clients) . "】|老用户[key:{$key}|请求信息:$msg]\n";
+        echo date('Y-m-d H:i:s') . " 在线人数【" . count($clients) . "】|老用户[key:{$key}|请求信息:$msg]\n";
         $message = json_decode($msg, true);
         if (isset($message['event'])) {
             $resp = match ($message['event']) {
@@ -138,7 +138,7 @@ class ws
         }
         socket_bind($socket, $this->address, $this->port);
         socket_listen($socket, $this->port);
-        echo "listen on ws://$this->address:$this->port ... \n";
+        echo date('Y-m-d H:i:s') . " listen on ws://$this->address:$this->port ... \n";
         $this->_socket = $socket;
     }
 
@@ -166,12 +166,17 @@ class ws
                         if (!$headers) continue;
                         socket_getpeername($newClient, $ip);//获取client ip
                         $clients[$headers['Sec-WebSocket-Key']] = $newClient;
-                        echo "在线人数【" . count($clients) . "】|新用户[ip:$ip|swk:{$headers['Sec-WebSocket-Key']}]\n";
+                        echo date('Y-m-d H:i:s') . " 在线人数【" . count($clients) . "】|新用户[ip:$ip|swk:{$headers['Sec-WebSocket-Key']}]\n";
                     } else {
                         $len = socket_recv($_socket, $buffer, 32768, 0);
                         $msg = $this->message($buffer);
                         if ($len < 7 || ($len == 8 && strlen($msg) == 2)) {
-                            if ($key != 'ws') unset($clients[$key]);
+                            if ($key != 'ws') {
+                                unset($clients[$key]);
+                                foreach ($this->users as $nickname => $socket) {
+                                    if ($_socket == $socket) unset($this->users[$nickname]);
+                                }
+                            }
                             continue;
                         }
                         $this->logic($clients, $key, $msg);//处理消息
@@ -179,7 +184,7 @@ class ws
                 }
             }
         } catch (Exception $e) {
-            echo "error:" . $e->getMessage();
+            echo date('Y-m-d H:i:s') . " error:" . $e->getMessage();
         }
     }
 
@@ -255,16 +260,17 @@ class ws
     {
         $msg = $this->dataFrame($msg);
         $lens = strlen($msg);//总长度
-        //@socket_write($client, $msg, $lens);return;
-        $finish = 0;//已经写入完成的长度
-        while ($finish < $lens) {
-            $bytes = @socket_write($client, substr($msg, $finish));
-            if ($bytes === false) {
-                echo "error：Failed to write to socket.\r\n";
-                return;
-            }
-            $finish += $bytes;
-        }
+        @socket_write($client, $msg, $lens);
+        return;
+//        $finish = 0;//已经写入完成的长度
+//        while ($finish < $lens) {
+//            $bytes = @socket_write($client, substr($msg, $finish));
+//            if ($bytes === false) {
+//                echo date('Y-m-d H:i:s') . " error：Failed to write to socket.\r\n";
+//                return;
+//            }
+//            $finish += $bytes;
+//        }
     }
 
     /**
@@ -274,13 +280,13 @@ class ws
      */
     public function dataFrame($msg): string
     {
-        $dataLength = strlen($msg);
-        if ($dataLength <= 125) {
-            return "\x81" . chr($dataLength) . $msg;
-        } elseif ($dataLength <= 65535) {
-            return "\x81\x7E" . pack('n', $dataLength) . $msg;
+        $len = strlen($msg);
+        if ($len <= 125) {
+            return "\x81" . chr($len) . $msg;
+        } elseif ($len <= 65535) {
+            return "\x81\x7E" . pack('n', $len) . $msg;
         } else {
-            return "\x81\x7F" . pack('J', $dataLength) . $msg;
+            return "\x81\x7F" . pack('J', $len) . $msg;
         }
     }
 }
